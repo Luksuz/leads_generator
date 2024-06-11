@@ -1,88 +1,62 @@
-import './App.css';
-import { useState, useEffect } from 'react';
-import { Button, Container, Row, Col, Card } from 'react-bootstrap';
+import "./App.css";
+import { useState, useEffect } from "react";
+import { Button, Container, Row, Col, Card } from "react-bootstrap";
+import { getPlaceInfo, getNearbyPlacesIDs } from "./APIUtils";
+import FormComponent from "./components/FormComponent";
 
 export default function App() {
   const [placeIds, setPlaceIds] = useState([]);
   const [placesInfo, setPlacesInfo] = useState([]);
-
-  const nearby_places_url = "https://places.googleapis.com/v1/places:searchNearby";
-  const payload = {
-    includedTypes: [
-      "restaurant"
-    ],
-    maxResultCount: 20,
-    rankPreference: "DISTANCE",
-    locationRestriction: {
-      circle: {
-        center: {
-          latitude: 46.309933,
-          longitude: 16.334291
-        },
-        radius: 1000.0
-      }
-    }
-  };
-
-  const headers1 = {
-    "Content-Type": "application/json",
-    "X-Goog-Api-Key": "AIzaSyCdh8z4QAiNOfQNxSGJ2YG4enUBCAokPiw",
-    "X-Goog-FieldMask": "places.id"
-  };
-
-  const headers2 = {
-    "Content-Type": "application/json",
-    "X-Goog-Api-Key": "AIzaSyCdh8z4QAiNOfQNxSGJ2YG4enUBCAokPiw",
-    "X-Goog-FieldMask": "formattedAddress,id,websiteUri,nationalPhoneNumber,displayName"
-  };
-
-  async function get_nearby_places_ids() {
-    try {
-      let response = await fetch(nearby_places_url, {
-        method: "POST",
-        body: JSON.stringify(payload),
-        headers: headers1
-      });
-      let data = await response.json();
-      let places = data.places;
-      setPlaceIds(places.map(place => place.id)); // assuming each place has an id field
-    } catch (error) {
-      console.error("Error fetching places:", error);
-    }
-  }
+  const [FieldMask, setFieldMask] = useState([]);
+  const [includedTypes, setIncludedTypes] = useState(["restaurant"]);
+  const [maxResultCount, setMaxResultCount] = useState(10);
+  const [coordinates, setCoordinates] = useState({
+    latitude: 46.309933,
+    longitude: 16.334291,
+  });
+  const [radius, setRadius] = useState(1000);
 
   useEffect(() => {
-    async function fetchPlaceInfo() {
-      try {
-        let placeInfoPromises = placeIds.map(place_id => 
-          fetch(`https://places.googleapis.com/v1/places/${place_id}`, {
-            method: "GET",
-            headers: headers2
-          }).then(response => response.json())
-        );
-
-        let placesInfoData = await Promise.all(placeInfoPromises);
-        setPlacesInfo(placesInfoData);
-      } catch (error) {
-        console.error("Error fetching place info:", error);
-      }
-    }
-
     if (placeIds.length > 0) {
-      fetchPlaceInfo();
+      getPlaceInfo(FieldMask, setPlacesInfo, placeIds);
     }
-  // eslint-disable-next-line
+    // eslint-disable-next-line
   }, [placeIds]);
+
+  function handleGetNearbyPlacesIDs() {
+    getNearbyPlacesIDs(
+      includedTypes,
+      maxResultCount,
+      coordinates.latitude,
+      coordinates.longitude,
+      radius,
+      setPlaceIds
+    );
+  }
 
   return (
     <div className="App">
       <Container>
         <Row className="my-3">
           <Col className="text-center">
-            <Button variant="primary" onClick={get_nearby_places_ids}>
+            <Button variant="primary" onClick={handleGetNearbyPlacesIDs}>
               Get Nearby Places
             </Button>
           </Col>
+        </Row>
+        <Row>
+          <FormComponent
+            FieldMask={FieldMask}
+            setFieldMask={setFieldMask}
+            includedTypes={includedTypes}
+            setIncludedTypes={setIncludedTypes}
+            maxResultCount={maxResultCount}
+            setMaxResultCount={setMaxResultCount}
+            coordinates={coordinates}
+            setCoordinates={setCoordinates}
+            radius={radius}
+            setRadius={setRadius}
+          />
         </Row>
         <Row>
           {placesInfo.length > 0 &&
@@ -96,13 +70,13 @@ export default function App() {
                       <br />
                       <strong>Phone:</strong> {place.nationalPhoneNumber}
                       <br />
-                      <strong>Website:</strong> <a href={place.websiteUri}>{place.websiteUri}</a>
+                      <strong>Website:</strong>{" "}
+                      <a href={place.websiteUri}>{place.websiteUri}</a>
                     </Card.Text>
                   </Card.Body>
                 </Card>
               </Col>
-            ))
-          }
+            ))}
         </Row>
       </Container>
     </div>
